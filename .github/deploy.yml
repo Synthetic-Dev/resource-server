@@ -1,0 +1,27 @@
+name: CI-Deploy
+
+on:
+  push:
+    branches:
+      [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy NodeJS app
+        uses: appleboy/ssh-action@v0.1.2
+        with:
+          host: ${{secrets.SSH_HOST}}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/github/api.pixelbyte.games/
+            echo Recieved new update for api.pixelbyte.games
+            (service api-pixelbyte-games status | grep "Active: active") && echo Stopping current process... && service api-pixelbyte-games stop
+            (forever list | grep "api-pixelbyte-games") && forever stop api-pixelbyte-games
+            echo Getting updates...
+            git pull
+            npm install
+            echo Starting new process...
+            sudo service api-pixelbyte-games start

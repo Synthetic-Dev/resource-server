@@ -1,0 +1,22 @@
+{
+  "name": "pixelbyte.games",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "engines": {
+    "node": "17.5.x",
+    "nodemon": "2.x"
+  },
+  "scripts": {
+    "start": "node .",
+    "dev": "nodemon ."
+  },
+  "keywords": [],
+  "author": "Leon Semmens [SyntheticDev]",
+  "license": "ISC",
+  "dependencies": {
+    "connect-timeout": "^1.9.0",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.2"
+  }
+}
