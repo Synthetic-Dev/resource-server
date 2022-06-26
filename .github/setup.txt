@@ -1,6 +1,6 @@
 cd /home/github/
-git clone https://Synthetic-Dev@github.com/Pixelbyte-io/api.pixelbyte.games
-cd api.pixelbyte.games
+git clone https://Synthetic-Dev@github.com/Synthetic-Dev/resource-server
+cd resource-server
 npm install
-forever-service install api-pixelbyte-games --script index.js
-sudo service api-pixelbyte-games start
+forever-service install resource-server --script index.js
+sudo service resource-server start
