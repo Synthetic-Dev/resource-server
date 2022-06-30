@@ -16,12 +16,12 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/github/api.pixelbyte.games/
-            echo Recieved new update for api.pixelbyte.games
-            (service api-pixelbyte-games status | grep "Active: active") && echo Stopping current process... && service api-pixelbyte-games stop
-            (forever list | grep "api-pixelbyte-games") && forever stop api-pixelbyte-games
+            cd /home/github/resource-server/
+            echo Recieved new update for resource-server
+            (service resource-server status | grep "Active: active") && echo Stopping current process... && service resource-server stop
+            (forever list | grep "resource-server") && forever stop resource-server
             echo Getting updates...
             git pull
-            npm install
+            npm update
             echo Starting new process...
-            sudo service api-pixelbyte-games start
+            sudo service resource-server start

@@ -1,10 +1,6 @@
 // Get environment variables
 require("dotenv").config()
 
-const fs = require("fs")
-const Path = require("path")
-const Http = require("http")
-const Https = require("https")
 const Express = require("express")
 const Timeout = require("connect-timeout")
 
@@ -19,15 +15,22 @@ console.log("App created")
 app.use(Timeout(10 * 1000))
 app.use(RequestLogger)
 
+function download(response, fileName) {
+    response.download(__dirname + `/resources/${fileName}.zip`, `${fileName}.zip`)
+}
+
 app.get("/spigot-resource/:resource", (request, response, next) => {
     let resource = request.params.resource;
     let fileSent = false
 
     switch (resource) {
         case "netherite-shield":
-            response.download(__dirname + "/resources/Netherite Shield.zip", "Netherite Shield.zip")
+            download(response, "Netherite Shield")
             fileSent = true
             break
+        case "backpacks":
+            download(response, "Backpacks")
+            fileSent = true
     }
 
     if (!fileSent) {
