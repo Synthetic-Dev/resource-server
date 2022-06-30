@@ -56,8 +56,13 @@ app.get("/spigot-resource-combine", (request, response, next) => {
         fileNames.push(fileName)
     }
 
-    if (fileNames.length < 2) {
+    if (fileNames.length < 1) {
         return response.sendStatus(400)
+    }
+
+    if (fileNames.length == 1) {
+        download(response, fileNames[0])
+        return
     }
 
     let zip = new AdmZip(`./resources/${fileNames[0]}.zip`)
