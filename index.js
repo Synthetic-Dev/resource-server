@@ -1,8 +1,10 @@
 // Get environment variables
 require("dotenv").config()
 
+const Crypto = require("crypto")
 const Stream = require("stream")
 const AdmZip = require("adm-zip")
+const NodeCache = require("node-cache")
 const Express = require("express")
 const Timeout = require("connect-timeout")
 
@@ -40,11 +42,32 @@ app.get("/spigot-resource/:resource", (request, response, next) => {
     download(response, fileName)
 })
 
+const sha1Cache = new NodeCache({
+    stdTTL: 60 * 30
+})
+const combinationBufferCache = new NodeCache({
+    stdTTL: 60 * 30,
+    useClones: false
+})
+
+function getSha1(identifier, buffer) {
+    let sha1 = sha1Cache.get(identifier)
+    if (sha1) return sha1
+
+    let hash = Crypto.createHash("sha1")
+    hash.update(buffer)
+    sha1 = hash.digest("base64")
+    sha1Cache.set(identifier, sha1)
+    return sha1
+}
+
 app.get("/spigot-resource-combine", (request, response, next) => {
     let resources = request.query.resources
     if (!resources) {
         return response.sendStatus(400)
     }
+
+    let wantsSha1 = !!request.query.sha1
 
     resources = resources.trim().split(",")
     let fileNames = []
@@ -61,40 +84,59 @@ app.get("/spigot-resource-combine", (request, response, next) => {
     }
 
     if (fileNames.length == 1) {
-        download(response, fileNames[0])
+        let fileName = fileNames[0]
+        if (wantsSha1) {
+            let zip = new AdmZip(`./resources/${fileName}.zip`)
+            let sha1 = getSha1(fileName, zip.toBuffer())
+            response.send(sha1)
+        } else {
+            download(response, fileName)
+        }
         return
     }
 
-    let zip = new AdmZip(`./resources/${fileNames[0]}.zip`)
+    fileNames = fileNames.sort()
+    let combinedName = fileNames.join("+")
 
-    for (let i = 1; i < fileNames.length; i++) {
-        let fileName = fileNames[i]
-        let otherZip = new AdmZip(`./resources/${fileName}.zip`)
-        for (let entry of otherZip.getEntries()) {
-            let mainEntry = zip.getEntry(entry.entryName)
-            if (mainEntry) {
-                if (entry.isDirectory) continue;
-            } else {
-                if (entry.isDirectory) {
-                    zip.addFile(entry.entryName)
+    let readStream = new Stream.PassThrough()
+
+    let buffer = combinationBufferCache.get(combinedName)
+    if (!buffer) {
+        let zip = new AdmZip(`./resources/${fileNames[0]}.zip`)
+
+        for (let i = 1; i < fileNames.length; i++) {
+            let fileName = fileNames[i]
+            let otherZip = new AdmZip(`./resources/${fileName}.zip`)
+            for (let entry of otherZip.getEntries()) {
+                let mainEntry = zip.getEntry(entry.entryName)
+                if (mainEntry) {
+                    if (entry.isDirectory) continue;
                 } else {
-                    zip.addFile(entry.entryName, entry.getData(), entry.comment, entry.attr)
+                    if (entry.isDirectory) {
+                        zip.addFile(entry.entryName)
+                    } else {
+                        zip.addFile(entry.entryName, entry.getData(), entry.comment, entry.attr)
+                    }
                 }
             }
         }
+
+        let mcmeta = JSON.parse(zip.readAsText("pack.mcmeta"))
+        mcmeta.pack.description = combinedName
+        zip.updateFile("pack.mcmeta", Buffer.from(JSON.stringify(mcmeta)))
+
+        buffer = zip.toBuffer()
+        combinationBufferCache.set(combinedName, buffer)
     }
 
-    let combinedName = fileNames.join("+")
-
-    let mcmeta = JSON.parse(zip.readAsText("pack.mcmeta"))
-    mcmeta.pack.description = combinedName
-    zip.updateFile("pack.mcmeta", Buffer.from(JSON.stringify(mcmeta)))
-
-    let readStream = new Stream.PassThrough()
-    readStream.end(zip.toBuffer())
-
-    response.set('Content-disposition', 'attachment; filename=' + combinedName + ".zip")
-    readStream.pipe(response)
+    if (wantsSha1) {
+        let sha1 = getSha1(combinedName, buffer)
+        response.send(sha1)
+    } else {
+        response.set('Content-disposition', 'attachment; filename=' + combinedName + ".zip")
+        readStream.end(buffer)
+        readStream.pipe(response)
+    }
 })
 
 /**
